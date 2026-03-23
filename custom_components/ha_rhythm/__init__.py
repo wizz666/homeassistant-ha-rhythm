@@ -17,6 +17,14 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["sensor"]
 
 
+async def _notify(hass: HomeAssistant, title: str, message: str, notification_id: str) -> None:
+    """Create a persistent notification."""
+    await hass.services.async_call(
+        "persistent_notification", "create",
+        {"title": title, "message": message, "notification_id": notification_id},
+    )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
 
@@ -27,9 +35,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
-    # Welcome notification on first install (no suggestions yet = fresh install)
+    # Welcome notification on first install
     if not coordinator.suggestions and not coordinator.last_scan:
-        hass.components.persistent_notification.async_create(
+        await _notify(
+            hass,
             title="HA Rhythm installed!",
             message=(
                 "HA Rhythm is ready to learn your home's routines.\n\n"
@@ -37,12 +46,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "Go to **Developer Tools → Actions**, search for `ha_rhythm.scan` "
                 "and press **Perform action**. The scan takes 1–3 minutes.\n\n"
                 "**Step 2 — Review suggestions:**\n"
-                "After the scan you'll get a notification listing what was found. "
-                "Each suggestion contains a ready-to-use automation you can deploy "
-                "with one click.\n\n"
+                "After the scan you'll get a notification listing what was found.\n\n"
                 "**Step 3 — Add the dashboard card (optional):**\n"
-                "See the README for a copy-paste Lovelace card that gives you "
-                "scan + review + deploy in one place."
+                "See the README for a copy-paste Lovelace card."
             ),
             notification_id="rhythm_welcome",
         )
@@ -59,8 +65,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     f"Found {patterns_found} behavioral pattern"
                     f"{'s' if patterns_found != 1 else ''}, but none were "
                     f"consistent enough to suggest an automation (need 45%+ consistency).\n\n"
-                    f"This is normal — keep using your devices normally and "
-                    f"run another scan in a week."
+                    f"Keep using your devices normally and run another scan in a week."
                 )
             else:
                 msg = (
@@ -71,31 +76,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                     "(not manually), so there's no personal rhythm to detect\n"
                     "- Your usage varies too much day-to-day\n\n"
                     "HA Rhythm works best when you manually control lights, "
-                    "switches, and media players on a regular schedule. "
-                    "Try again after a week of normal use."
+                    "switches, and media players on a regular schedule."
                 )
-            hass.components.persistent_notification.async_create(
-                title="HA Rhythm — scan complete",
-                message=msg,
-                notification_id="rhythm_scan_done",
-            )
+            await _notify(hass, "HA Rhythm — scan complete", msg, "rhythm_scan_done")
         else:
             pending = coordinator.pending_suggestions
             lines = "\n".join(
-                f"• **{s['friendly_name']}** — {s['explanation']} "
-                f"(ID: `{s['id']}`)"
+                f"• **{s['friendly_name']}** — {s['explanation']} (ID: `{s['id']}`)"
                 for s in pending[:10]
             )
-            hass.components.persistent_notification.async_create(
+            await _notify(
+                hass,
                 title=f"HA Rhythm — {count} new suggestion{'s' if count != 1 else ''}",
                 message=(
                     f"Found {count} automation suggestion{'s' if count != 1 else ''} "
-                    f"based on your behavior:\n\n"
-                    f"{lines}\n\n"
-                    f"**To deploy** a suggestion, go to "
-                    f"**Developer Tools → Actions → ha_rhythm.deploy** "
-                    f"and enter the suggestion ID shown above.\n\n"
-                    f"Or add the dashboard card from the README for an easier review flow."
+                    f"based on your behavior:\n\n{lines}\n\n"
+                    f"**To deploy:** Developer Tools → Actions → `ha_rhythm.deploy` "
+                    f"and enter the suggestion ID."
                 ),
                 notification_id="rhythm_scan_done",
             )
@@ -115,7 +112,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_delete(call.data["suggestion_id"])
 
     hass.services.async_register(DOMAIN, "scan", handle_scan)
-
     hass.services.async_register(
         DOMAIN, "deploy", handle_deploy,
         schema=vol.Schema({vol.Required("suggestion_id"): cv.string}),

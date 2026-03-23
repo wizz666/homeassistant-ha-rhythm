@@ -302,15 +302,18 @@ class HaRhythmCoordinator:
         await self.hass.services.async_call("automation", "reload")
 
         auto = suggestion.get("automation", {})
-        self.hass.components.persistent_notification.async_create(
-            title=f"HA Rhythm: '{auto.get('alias', suggestion['friendly_name'])}' deployed",
-            message=(
-                f"{suggestion['explanation']}\n\n"
-                f"Automation added to `ha_rhythm_automations.yaml`.\n\n"
-                f"ℹ️ Add `automation rhythm: !include ha_rhythm_automations.yaml` "
-                f"to `configuration.yaml` if not already done."
-            ),
-            notification_id=f"rhythm_{suggestion_id}_deployed",
+        await self.hass.services.async_call(
+            "persistent_notification", "create",
+            {
+                "title": f"HA Rhythm: '{auto.get('alias', suggestion['friendly_name'])}' deployed",
+                "message": (
+                    f"{suggestion['explanation']}\n\n"
+                    f"Automation added to `ha_rhythm_automations.yaml`.\n\n"
+                    f"Add `automation rhythm: !include ha_rhythm_automations.yaml` "
+                    f"to `configuration.yaml` if not already done."
+                ),
+                "notification_id": f"rhythm_{suggestion_id}_deployed",
+            },
         )
         self._notify()
 
