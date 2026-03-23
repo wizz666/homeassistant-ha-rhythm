@@ -1,0 +1,66 @@
+scan:
+  name: Scan for Patterns
+  description: >
+    Analyze Home Assistant history for behavioral patterns and generate
+    automation suggestions using AI. Runs the full pipeline automatically.
+  fields: {}
+
+deploy:
+  name: Deploy Suggestion
+  description: Deploy a pending automation suggestion to ha_rhythm_automations.yaml.
+  fields:
+    suggestion_id:
+      name: Suggestion ID
+      description: The 8-character ID of the suggestion to deploy.
+      required: true
+      example: "a1b2c3d4"
+      selector:
+        text:
+
+dismiss:
+  name: Dismiss Suggestion
+  description: Dismiss a pending suggestion without deploying it.
+  fields:
+    suggestion_id:
+      name: Suggestion ID
+      description: The 8-character ID of the suggestion to dismiss.
+      required: true
+      example: "a1b2c3d4"
+      selector:
+        text:
+
+feedback:
+  name: Rate Suggestion
+  description: Rate a suggestion as good or bad to improve future scans.
+  fields:
+    suggestion_id:
+      name: Suggestion ID
+      description: The 8-character ID of the suggestion to rate.
+      required: true
+      example: "a1b2c3d4"
+      selector:
+        text:
+    rating:
+      name: Rating
+      description: Your rating for this suggestion.
+      required: true
+      example: "good"
+      selector:
+        select:
+          options:
+            - "good"
+            - "bad"
+
+delete:
+  name: Delete Suggestion
+  description: >
+    Permanently delete a suggestion. If it was deployed, removes the
+    automation from ha_rhythm_automations.yaml and reloads automations.
+  fields:
+    suggestion_id:
+      name: Suggestion ID
+      description: The 8-character ID of the suggestion to delete.
+      required: true
+      example: "a1b2c3d4"
+      selector:
+        text:
