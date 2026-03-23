@@ -27,11 +27,63 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    # Welcome notification on first install (no suggestions yet = fresh install)
+    if not coordinator.suggestions and not coordinator.last_scan:
+        hass.components.persistent_notification.async_create(
+            title="HA Rhythm installed!",
+            message=(
+                "HA Rhythm is ready to learn your home's routines.\n\n"
+                "**Step 1 — Run your first scan:**\n"
+                "Go to **Developer Tools → Actions**, search for `ha_rhythm.scan` "
+                "and press **Perform action**. The scan takes 1–3 minutes.\n\n"
+                "**Step 2 — Review suggestions:**\n"
+                "After the scan you'll get a notification listing what was found. "
+                "Each suggestion contains a ready-to-use automation you can deploy "
+                "with one click.\n\n"
+                "**Step 3 — Add the dashboard card (optional):**\n"
+                "See the README for a copy-paste Lovelace card that gives you "
+                "scan + review + deploy in one place."
+            ),
+            notification_id="rhythm_welcome",
+        )
+
     # ── Services ──────────────────────────────────────────────────────────────
 
     async def handle_scan(call: ServiceCall) -> None:
         count = await coordinator.async_scan()
         _LOGGER.info("HA Rhythm: scan complete — %d new suggestions", count)
+        if count == 0:
+            hass.components.persistent_notification.async_create(
+                title="HA Rhythm — scan complete",
+                message=(
+                    "No new patterns found this time.\n\n"
+                    "This is normal if:\n"
+                    "- You have less than 7 days of history\n"
+                    "- Your devices don't follow a regular schedule yet\n\n"
+                    "Try again after a few more days of normal use."
+                ),
+                notification_id="rhythm_scan_done",
+            )
+        else:
+            pending = coordinator.pending_suggestions
+            lines = "\n".join(
+                f"• **{s['friendly_name']}** — {s['explanation']} "
+                f"(ID: `{s['id']}`)"
+                for s in pending[:10]
+            )
+            hass.components.persistent_notification.async_create(
+                title=f"HA Rhythm — {count} new suggestion{'s' if count != 1 else ''}",
+                message=(
+                    f"Found {count} automation suggestion{'s' if count != 1 else ''} "
+                    f"based on your behavior:\n\n"
+                    f"{lines}\n\n"
+                    f"**To deploy** a suggestion, go to "
+                    f"**Developer Tools → Actions → ha_rhythm.deploy** "
+                    f"and enter the suggestion ID shown above.\n\n"
+                    f"Or add the dashboard card from the README for an easier review flow."
+                ),
+                notification_id="rhythm_scan_done",
+            )
 
     async def handle_deploy(call: ServiceCall) -> None:
         await coordinator.async_deploy(call.data["suggestion_id"])

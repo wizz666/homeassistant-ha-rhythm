@@ -36,7 +36,7 @@ No manual pattern writing. No guessing. Just your actual behavior, automated.
 - **Weekday/weekend aware** — detects if a pattern only happens on workdays or weekends
 - **Correlation detection** — finds "entity A triggers entity B" sequences
 - **Full review flow** — nothing is deployed without your approval
-- **Works with Groq** (free), **OpenRouter**, **Ollama**, **LM Studio**, **OpenAI**, **Anthropic**
+- Works with **Groq** (free), **OpenRouter**, **Ollama**, **LM Studio**, **OpenAI**, **Anthropic**
 
 ---
 
@@ -46,6 +46,7 @@ No manual pattern writing. No guessing. Just your actual behavior, automated.
 1. HACS → Integrations → ⋮ → Custom repositories
 2. Add `wizz666/homeassistant-ha-rhythm` as type **Integration**
 3. Install **HA Rhythm** and restart Home Assistant
+4. Go to **Settings → Integrations**, find **HA Rhythm** and complete the setup
 
 ### Manual
 Copy `custom_components/ha_rhythm/` to your `config/custom_components/` directory and restart.
@@ -60,63 +61,79 @@ Add this to your `configuration.yaml` so deployed automations take effect:
 automation rhythm: !include ha_rhythm_automations.yaml
 ```
 
-Then restart Home Assistant once. After that, deploying suggestions only requires `automation.reload`.
+Then restart Home Assistant once. After that, deploying suggestions only requires a quick reload — no restart needed.
 
 ---
 
-## Usage
+## Getting started
 
-### 1. Run a scan
+After installation, HA Rhythm will show you a welcome notification with instructions. Here's the full flow:
 
-```yaml
-service: ha_rhythm.scan
-```
+### Step 1 — Run your first scan
 
-HA Rhythm analyzes your history (default: 21 days), detects patterns, and calls AI to generate suggestions. This may take 1–3 minutes depending on your history size and AI provider speed.
+Go to **Developer Tools → Actions**, search for `ha_rhythm.scan` and press **Perform action**.
 
-### 2. Review suggestions
+> ⏱ The scan takes 1–3 minutes depending on the size of your history. Status shows in `sensor.ha_rhythm_status`.
 
-Check `sensor.ha_rhythm_pending_suggestions` attributes — each suggestion includes:
-- What pattern was detected (entity, time window, consistency %)
-- AI explanation of the behavior
-- The full automation YAML that will be deployed
+### Step 2 — Review the suggestions
 
-### 3. Deploy
+After the scan you'll get a notification listing every suggestion found, including the suggestion ID.
 
-```yaml
-service: ha_rhythm.deploy
-data:
-  suggestion_id: "a1b2c3d4"
-```
+### Step 3 — Deploy
 
-### 4. Dismiss (not relevant)
+Go to **Developer Tools → Actions → ha_rhythm.deploy**, enter the suggestion ID and press **Perform action**.
 
-```yaml
-service: ha_rhythm.dismiss
-data:
-  suggestion_id: "a1b2c3d4"
-```
+### Easier: use the dashboard card
 
-### 5. Rate
-
-```yaml
-service: ha_rhythm.feedback
-data:
-  suggestion_id: "a1b2c3d4"
-  rating: good  # or bad
-```
+Add the card below to any Lovelace dashboard for a scan button + suggestion review in one place:
 
 ---
 
-## Services
+## Dashboard card (copy-paste)
 
-| Service | Description |
+Add this to your Lovelace dashboard (raw YAML editor):
+
+```yaml
+type: vertical-stack
+cards:
+  - type: markdown
+    content: >
+      ## 🎵 HA Rhythm
+      Passive behavioral automation suggestions
+  - type: entities
+    entities:
+      - entity: sensor.ha_rhythm_status
+        name: Status
+      - entity: sensor.ha_rhythm_patterns_detected
+        name: Patterns detected
+      - entity: sensor.ha_rhythm_pending_suggestions
+        name: Pending suggestions
+      - entity: sensor.ha_rhythm_deployed_automations
+        name: Deployed automations
+  - type: button
+    name: Run scan
+    icon: mdi:brain
+    tap_action:
+      action: perform-action
+      perform_action: ha_rhythm.scan
+      data: {}
+```
+
+> 💡 After a scan the notification will list all suggestion IDs. Use **Developer Tools → Actions → ha_rhythm.deploy** with the ID to deploy, or **ha_rhythm.dismiss** to skip.
+
+---
+
+## All actions (HA 2024.8+)
+
+Go to **Developer Tools → Actions** to call these:
+
+| Action | Description |
 |---|---|
 | `ha_rhythm.scan` | Analyze history and generate suggestions |
-| `ha_rhythm.deploy` | Deploy a pending suggestion |
-| `ha_rhythm.dismiss` | Dismiss a suggestion without deploying |
-| `ha_rhythm.feedback` | Rate a suggestion as `good` or `bad` |
-| `ha_rhythm.delete` | Permanently delete a suggestion and its automation |
+| `ha_rhythm.deploy` | Deploy a pending suggestion (needs `suggestion_id`) |
+| `ha_rhythm.dismiss` | Dismiss a suggestion without deploying (needs `suggestion_id`) |
+| `ha_rhythm.feedback` | Rate a suggestion as `good` or `bad` (needs `suggestion_id` + `rating`) |
+| `ha_rhythm.delete` | Permanently remove a suggestion and its automation (needs `suggestion_id`) |
 
 ---
 
