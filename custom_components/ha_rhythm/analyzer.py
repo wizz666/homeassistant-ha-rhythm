@@ -229,12 +229,17 @@ def analyze_patterns(
         activations: list[float] = []
         prev_state = None
         all_states = [s for _, s in ev_list]
-        only_active = all_states and all(
-            _is_active(domain, s) for s in all_states
+        # only_active: recorder has no "off" states (e.g. light always on).
+        # Skip for climate/cover — those persist through HA restarts,
+        # so "first daily occurrence" would just reflect restart time.
+        only_active = (
+            domain not in ("climate", "cover")
+            and all_states
+            and all(_is_active(domain, s) for s in all_states)
         )
 
         if only_active:
-            # Recorder has no "off" states — use first daily occurrence instead
+            # Use first daily occurrence as the activation timestamp
             seen_days: set = set()
             for ts, state in ev_list:
                 day = datetime.fromtimestamp(ts).date()
