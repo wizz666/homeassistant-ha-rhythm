@@ -1,13 +1,13 @@
 {
+  "domain": "ha_rhythm",
+  "name": "HA Rhythm",
   "codeowners": ["@wizz666"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/wizz666/homeassistant-ha-rhythm",
-  "domain": "ha_rhythm",
   "integration_type": "service",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/wizz666/homeassistant-ha-rhythm/issues",
-  "name": "HA Rhythm",
   "requirements": ["pyyaml>=6.0"],
   "version": "1.0.0"
 }
