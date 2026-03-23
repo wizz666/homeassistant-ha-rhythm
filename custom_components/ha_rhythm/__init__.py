@@ -53,15 +53,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         count = await coordinator.async_scan()
         _LOGGER.info("HA Rhythm: scan complete — %d new suggestions", count)
         if count == 0:
+            patterns_found = len(coordinator.patterns)
+            if patterns_found > 0:
+                msg = (
+                    f"Found {patterns_found} behavioral pattern"
+                    f"{'s' if patterns_found != 1 else ''}, but none were "
+                    f"consistent enough to suggest an automation (need 45%+ consistency).\n\n"
+                    f"This is normal — keep using your devices normally and "
+                    f"run another scan in a week."
+                )
+            else:
+                msg = (
+                    "No behavioral patterns found in your history.\n\n"
+                    "Possible reasons:\n"
+                    "- Less than 7 days of history for any device\n"
+                    "- Devices are controlled by existing automations "
+                    "(not manually), so there's no personal rhythm to detect\n"
+                    "- Your usage varies too much day-to-day\n\n"
+                    "HA Rhythm works best when you manually control lights, "
+                    "switches, and media players on a regular schedule. "
+                    "Try again after a week of normal use."
+                )
             hass.components.persistent_notification.async_create(
                 title="HA Rhythm — scan complete",
-                message=(
-                    "No new patterns found this time.\n\n"
-                    "This is normal if:\n"
-                    "- You have less than 7 days of history\n"
-                    "- Your devices don't follow a regular schedule yet\n\n"
-                    "Try again after a few more days of normal use."
-                ),
+                message=msg,
                 notification_id="rhythm_scan_done",
             )
         else:

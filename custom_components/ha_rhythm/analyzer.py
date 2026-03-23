@@ -38,7 +38,7 @@ MIN_DAILY_ACTIVATIONS = 0.3   # at least once every 3 days on average
 MAX_DAILY_ACTIVATIONS = 40.0  # not a noisy sensor
 
 MIN_DAYS_FOR_PATTERN = 7      # need at least a week of data
-MIN_CONSISTENCY = 0.55        # 55% of observed days must match
+MIN_CONSISTENCY = 0.45        # 45% of observed days must match
 BUCKET_MINUTES = 15           # 96 buckets per day
 BUCKETS_PER_DAY = 24 * 60 // BUCKET_MINUTES  # 96
 CORRELATION_WINDOW_SEC = 300  # 5 minutes for correlation detection
@@ -225,13 +225,27 @@ def analyze_patterns(
         if domain not in BEHAVIORAL_DOMAINS:
             continue
 
-        # Collect timestamps of "becoming active"
+        # Collect timestamps of "becoming active" (off → on transitions)
         activations: list[float] = []
         prev_state = None
-        for ts, state in ev_list:
-            if _is_active(domain, state) and not _is_active(domain, prev_state or ""):
-                activations.append(ts)
-            prev_state = state
+        all_states = [s for _, s in ev_list]
+        only_active = all_states and all(
+            _is_active(domain, s) for s in all_states
+        )
+
+        if only_active:
+            # Recorder has no "off" states — use first daily occurrence instead
+            seen_days: set = set()
+            for ts, state in ev_list:
+                day = datetime.fromtimestamp(ts).date()
+                if day not in seen_days:
+                    activations.append(ts)
+                    seen_days.add(day)
+        else:
+            for ts, state in ev_list:
+                if _is_active(domain, state) and not _is_active(domain, prev_state or ""):
+                    activations.append(ts)
+                prev_state = state
 
         if not activations:
             continue
